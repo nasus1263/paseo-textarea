@@ -260,5 +260,5 @@ export function pasteLineAbove(text: string, start: number, clip: string): Edit 
 /** Typing a closing character that already sits right after the caret steps over it instead of adding another. */
 export function skipClose(text: string, start: number, end: number, typed: string): Edit | null {
   if (start !== end || !Object.values(AUTO_CLOSE).includes(typed) || text[start] !== typed) return null;
-  return { value: text, start, end };
+  return { value: text, start: start + 1, end: start + 1 };
 }
