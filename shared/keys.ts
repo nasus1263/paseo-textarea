@@ -10,8 +10,8 @@ export interface KeyInfo {
 
 /**
  * Maps a keydown in the composer to an edit, or null to leave the key to Paseo. Enter, Tab and
- * the arrows are left alone while the autocomplete popover is open. Ctrl+Enter is never handled:
- * it stays Paseo's send key, so a list or indented line can still be sent.
+ * the arrows are left alone while the autocomplete popover is open.
+ * Only Shift+Enter is handled; plain Enter and Ctrl+Enter always stay Paseo's.
  */
 export function editForKey(
   text: string,
@@ -42,7 +42,7 @@ export function editForKey(
     return k.shift ? edit.dedent(text, start, end) : edit.indent(text, start, end);
   }
   if (k.key === "Enter") {
-    if (popoverOpen) return null;
+    if (popoverOpen || !k.shift) return null;
     return edit.newline(text, start, end);
   }
 

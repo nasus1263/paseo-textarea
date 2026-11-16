@@ -24,18 +24,19 @@ const run = (s, k, mods, open = false) => {
 };
 
 test("Enter continues bullets, numbers and indent", () => {
-  assert.equal(run("- a|", "Enter"), "- a\n- |");
-  assert.equal(run("2. a|", "Enter"), "2. a\n3. |");
-  assert.equal(run("\tfoo|", "Enter"), "\tfoo\n\t|");
-  assert.equal(run("plain|", "Enter"), null);
+  assert.equal(run("- a|", "Enter", { shift: true }), "- a\n- |");
+  assert.equal(run("2. a|", "Enter", { shift: true }), "2. a\n3. |");
+  assert.equal(run("\tfoo|", "Enter", { shift: true }), "\tfoo\n\t|");
+  assert.equal(run("plain|", "Enter", { shift: true }), null);
 });
 test("Enter on an empty marker or indent removes one level", () => {
-  assert.equal(run("- |", "Enter"), "|");
-  assert.equal(run("\t\t|", "Enter"), "\t|");
+  assert.equal(run("- |", "Enter", { shift: true }), "|");
+  assert.equal(run("\t\t|", "Enter", { shift: true }), "\t|");
 });
 test("Ctrl+Enter and open popover are left to Paseo", () => {
   assert.equal(run("- a|", "Enter", { ctrl: true }), null);
-  assert.equal(run("- a|", "Enter", {}, true), null);
+  assert.equal(run("- a|", "Enter"), null);
+  assert.equal(run("- a|", "Enter", { shift: true }, true), null);
 });
 test("Tab indents every selected line, Shift+Tab dedents or yields", () => {
   assert.equal(run("[a\nb]", "Tab"), "[\ta\n\tb]");
