@@ -1,0 +1,1 @@
+{ "id": "paseo-textarea", "name": "Paseo Textarea", "media": [], "requirements": { "paseo": ">=0.16.0-beta.2" } }
