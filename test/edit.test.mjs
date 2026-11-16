@@ -70,6 +70,10 @@ test("opening brackets close themselves, third backtick opens a fence", () => {
   assert.equal(run("``|", "`"), "```|\n```");
   assert.equal(run("a``|", "`"), null);
 });
+test("a closing character already after the caret is not added again", () => {
+  assert.equal(run("(|)", ")"), "(|)");
+  assert.equal(run("(a|", ")"), null);
+});
 test("whole-line paste goes above the cursor line", () => {
   const r = e.pasteLineAbove("a\nb", 3, "x\n");
   assert.equal(r.value, "a\nx\nb");
