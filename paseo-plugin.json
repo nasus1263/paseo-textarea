@@ -1,7 +1,7 @@
 {
   "id": "paseo-textarea",
   "name": "Paseo Textarea",
-  "description": "Adds editor-style keys such as list continuation, indent, line move, and bracket wrapping to the message composer.",
+  "description": "Adds editor-style keys such as list continuation, indent, line move, and bracket wrapping, arrows, and a per-workspace stash to the message composer.",
   "media": [],
   "requirements": {
     "paseo": ">=0.16.0-beta.2"

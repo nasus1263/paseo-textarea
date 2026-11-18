@@ -25,7 +25,7 @@ export const WRAP_PAIRS: Record<string, string> = {
   "~": "~",
   "<": ">",
 };
-export const AUTO_CLOSE: Record<string, string> = { "(": ")", "<": ">", "{": "}" };
+export const AUTO_CLOSE: Record<string, string> = { "(": ")", "<": ">", "{": "}", "`": "`" };
 
 const BULLET = "- ";
 const BULLETS = [BULLET, "* ", "+ "];
@@ -43,6 +43,10 @@ export function lineSpan(text: string, start: number, end: number): [number, num
 export function lineAt(text: string, pos: number): string {
   const [ls, le] = lineSpan(text, pos, pos);
   return text.slice(ls, le);
+}
+
+function lineBefore(text: string, pos: number): string {
+  return text.slice(text.lastIndexOf("\n", pos - 1) + 1, pos);
 }
 
 function leading(line: string): string {
@@ -203,6 +207,8 @@ export function fence(text: string, start: number, end: number): Edit | null {
 export function autoClose(text: string, start: number, end: number, opening: string): Edit | null {
   const close = AUTO_CLOSE[opening];
   if (close === undefined || start !== end) return null;
+  // A backtick that extends a run, or closes a code span (odd count before it on the line), stays single.
+  if (opening === "`" && (text[start - 1] === "`" || (lineBefore(text, start).split("`").length - 1) % 2 === 1)) return null;
   return {
     value: text.slice(0, start) + opening + close + text.slice(end),
     start: start + 1,
@@ -261,4 +267,21 @@ export function pasteLineAbove(text: string, start: number, clip: string): Edit 
 export function skipClose(text: string, start: number, end: number, typed: string): Edit | null {
   if (start !== end || !Object.values(AUTO_CLOSE).includes(typed) || text[start] !== typed) return null;
   return { value: text, start: start + 1, end: start + 1 };
+}
+
+/**
+ * `->` becomes `→` and `<-` becomes `←`. Typing `-` right after an auto-closed `<` also drops the
+ * `>` that was added for it. `-->` is left alone so HTML comments still close.
+ */
+export function arrow(text: string, start: number, end: number, typed: string): Edit | null {
+  if (start !== end || start === 0) return null;
+  const prev = text[start - 1];
+  if (typed === ">" && prev === "-" && text[start - 2] !== "-") {
+    return { value: text.slice(0, start - 1) + "→" + text.slice(start), start, end: start };
+  }
+  if (typed === "-" && prev === "<") {
+    const after = text[start] === ">" ? start + 1 : start;
+    return { value: text.slice(0, start - 1) + "←" + text.slice(after), start, end: start };
+  }
+  return null;
 }

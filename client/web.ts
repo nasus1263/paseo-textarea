@@ -3,8 +3,9 @@ import { type Edit, lineAt, deleteLine, pasteLineAbove } from "../shared/edit";
 import { editForKey } from "../shared/keys";
 
 // This plugin typechecks without the DOM library. Declare only what this module uses.
-interface DomTextarea {
+export interface DomTextarea {
   value: string;
+  focus(): void;
   selectionStart: number;
   selectionEnd: number;
   setSelectionRange(start: number, end: number): void;
@@ -27,7 +28,15 @@ interface DomKeyEvent extends DomEvent {
 interface DomClipboardEvent extends DomEvent {
   clipboardData: { getData(type: string): string; setData(type: string, data: string): void } | null;
 }
+interface DomElement {
+  parentElement: DomElement | null;
+  querySelector(selector: string): unknown;
+  contains(other: unknown): boolean;
+  setAttribute(name: string, value: string): void;
+  focus(): void;
+}
 declare const window: {
+  location: { pathname: string };
   addEventListener(type: string, listener: (event: never) => void, capture: boolean): void;
   removeEventListener(type: string, listener: (event: never) => void, capture: boolean): void;
   HTMLTextAreaElement: { prototype: object };
@@ -49,7 +58,7 @@ function composer(target: unknown): DomTextarea | null {
 }
 
 /** Writes `next` into the textarea so the browser keeps undo history and the app sees an input event. */
-function apply(el: DomTextarea, next: Edit): void {
+export function apply(el: DomTextarea, next: Edit): void {
   const old = el.value;
   if (old !== next.value) {
     let p = 0;
@@ -77,6 +86,14 @@ export function installTextareaKeys(): () => void {
   const keydown = (event: DomKeyEvent) => {
     const el = composer(event.target);
     if (!el || event.isComposing) return;
+    if (event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey && event.key.toLowerCase() === "s") {
+      const handler = stashHandlers.find((h) => h.composer() === el);
+      if (!handler) return;
+      event.preventDefault();
+      event.stopPropagation();
+      handler.onStash(el);
+      return;
+    }
     const next = editForKey(
       el.value,
       el.selectionStart,
@@ -125,4 +142,78 @@ export function installTextareaKeys(): () => void {
     window.removeEventListener("cut", cut, true);
     window.removeEventListener("paste", paste, true);
   };
+}
+
+interface StashHandler {
+  composer(): DomTextarea | null;
+  onStash(el: DomTextarea): void;
+}
+const stashHandlers: StashHandler[] = [];
+
+/** The composer textarea that `node` (a View inside the composer) belongs to. */
+export function composerOf(node: unknown): DomTextarea | null {
+  if (Platform.OS !== "web") return null;
+  let el = node as DomElement | null;
+  for (let depth = 0; el && depth < 12; depth++, el = el.parentElement) {
+    const found = el.querySelector(`[${COMPOSER}]`);
+    if (found) return found as DomTextarea;
+  }
+  return null;
+}
+
+/** Routes Ctrl+S in the composer that `node` sits in to `onStash`. */
+export function onStashKey(node: () => unknown, onStash: (el: DomTextarea) => void): () => void {
+  const handler: StashHandler = { composer: () => composerOf(node()), onStash };
+  stashHandlers.push(handler);
+  return () => {
+    const i = stashHandlers.indexOf(handler);
+    if (i !== -1) stashHandlers.splice(i, 1);
+  };
+}
+
+/** Calls `listener` whenever the composer that `node` sits in takes focus. */
+export function onComposerFocus(node: () => unknown, listener: () => void): () => void {
+  if (Platform.OS !== "web") return () => {};
+  const focusin = (event: DomEvent) => {
+    const el = composerOf(node());
+    if (el && event.target === el) listener();
+  };
+  window.addEventListener("focusin", focusin, true);
+  return () => window.removeEventListener("focusin", focusin, true);
+}
+
+/**
+ * Which workspace the app is showing, read from its route (`/h/<host>/workspace/<id>`). Stashes are
+ * kept under this key. An agent opened on its own (`/h/<host>/agent/<id>`) gets its own key.
+ */
+export function workspaceKey(): string {
+  if (Platform.OS !== "web") return "global";
+  const path = window.location.pathname;
+  const ws = /\/h\/([^/]+)\/workspace\/([^/?#]+)/.exec(path);
+  if (ws) return `${decodeURIComponent(ws[1])}/workspace/${decodeURIComponent(ws[2])}`;
+  const agent = /\/h\/([^/]+)\/agent\/([^/?#]+)/.exec(path);
+  if (agent) return `${decodeURIComponent(agent[1])}/agent/${decodeURIComponent(agent[2])}`;
+  return "global";
+}
+
+/**
+ * Keyboard for the stash list: focuses `node` so Paseo's composer keys (Enter sends) stay out of
+ * it, and hands ArrowUp, ArrowDown, Enter and Escape pressed inside it to `onKey`.
+ */
+export function listKeys(node: unknown, onKey: (key: "up" | "down" | "enter" | "escape") => void): () => void {
+  if (Platform.OS !== "web" || !node) return () => {};
+  const el = node as DomElement;
+  el.setAttribute("tabindex", "-1");
+  el.focus();
+  const keydown = (event: DomKeyEvent) => {
+    if (!el.contains(event.target)) return;
+    const key =
+      event.key === "ArrowUp" ? "up" : event.key === "ArrowDown" ? "down" : event.key === "Enter" ? "enter" : event.key === "Escape" ? "escape" : null;
+    if (!key) return;
+    event.preventDefault();
+    event.stopPropagation();
+    onKey(key);
+  };
+  window.addEventListener("keydown", keydown, true);
+  return () => window.removeEventListener("keydown", keydown, true);
 }

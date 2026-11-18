@@ -78,3 +78,15 @@ test("whole-line paste goes above the cursor line", () => {
   const r = e.pasteLineAbove("a\nb", 3, "x\n");
   assert.equal(r.value, "a\nx\nb");
 });
+test("backtick pairs like a bracket, but not when it closes a code span", () => {
+  assert.equal(run("|", "`"), "`|`");
+  assert.equal(run("`|`", "`"), "``|");
+  assert.equal(run("a `b|", "`"), null);
+});
+test("-> and <- become arrows; <- drops the auto-closed >", () => {
+  assert.equal(run("a -|", ">"), "a →|");
+  assert.equal(run("a <|>", "-"), "a ←|");
+  assert.equal(run("a <|", "-"), "a ←|");
+  assert.equal(run("<!--|", ">"), null);
+  assert.equal(run("x|", ">"), null);
+});

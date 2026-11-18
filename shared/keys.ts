@@ -48,6 +48,7 @@ export function editForKey(
 
   if (k.key.length !== 1) return null;
   return (
+    edit.arrow(text, start, end, k.key) ??
     edit.skipClose(text, start, end, k.key) ??
     edit.wrapSelection(text, start, end, k.key) ??
     (k.key === "`" ? edit.fence(text, start, end) : null) ??
