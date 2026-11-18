@@ -1,11 +1,12 @@
 import { type PluginComposerItemProps, useRpc } from "@getpaseo/plugin/client";
 import { useToast } from "@getpaseo/plugin/client/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Modal, Platform, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { type StashItem, stashListRpc, stashPopRpc, stashPushRpc, stashRows } from "../shared/stash";
 import { apply, composerOf, type DomTextarea, listKeys, onComposerFocus, onStashKey, workspaceKey } from "./web";
 
 const AGO_WIDTH = 92;
+const LIST_WIDTH = 420;
 
 /**
  * Stash for the message composer, kept per workspace. Ctrl+S stashes the selection or, with nothing
@@ -26,6 +27,10 @@ function StashWeb({ theme }: PluginComposerItemProps) {
   const pop = useRpc(stashPopRpc);
   const [items, setItems] = useState<StashItem[]>([]);
   const [open, setOpen] = useState(false);
+  // Where the "stash N" label sits in the window. The list opens above it in a modal layer,
+  // because the composer clips anything drawn past its edges.
+  const [anchor, setAnchor] = useState({ x: 0, y: 0 });
+  const window = useWindowDimensions();
   const [cursor, setCursor] = useState(0);
   const [now, setNow] = useState(() => Date.now() / 1000);
   const itemsRef = useRef(items);
@@ -66,7 +71,12 @@ function StashWeb({ theme }: PluginComposerItemProps) {
   const openList = useCallback(() => {
     setNow(Date.now() / 1000);
     setCursor(0);
-    setOpen(true);
+    const show = (x: number, y: number) => {
+      setAnchor({ x, y });
+      setOpen(true);
+    };
+    if (root.current) root.current.measureInWindow(show);
+    else show(0, 0);
   }, []);
 
   const stash = useCallback(
@@ -128,13 +138,12 @@ function StashWeb({ theme }: PluginComposerItemProps) {
     () => ({
       root: { position: "relative" as const },
       label: { color: theme.colors.foregroundMuted, fontSize: 12, paddingHorizontal: 4 },
+      backdrop: { position: "absolute" as const, top: 0, left: 0, right: 0, bottom: 0 },
       list: {
         position: "absolute" as const,
-        bottom: 24,
-        left: 0,
-        width: 420,
+        width: LIST_WIDTH,
         maxHeight: 280,
-        zIndex: 20,
+        outlineWidth: 0,
         borderRadius: 8,
         borderWidth: 1,
         borderColor: theme.colors.border,
@@ -161,8 +170,18 @@ function StashWeb({ theme }: PluginComposerItemProps) {
       <Pressable accessibilityRole="button" accessibilityLabel={`stash ${items.length}개, 눌러서 되돌리기`} onPress={() => (open ? setOpen(false) : items.length === 1 ? void restore(0) : openList())}>
         <Text style={styles.label}>{`stash ${items.length}`}</Text>
       </Pressable>
-      {open && (
-        <View ref={listRef} style={styles.list}>
+      <Modal transparent visible={open} animationType="none" onRequestClose={() => setOpen(false)}>
+        <Pressable accessibilityLabel="stash 목록 닫기" style={styles.backdrop} onPress={() => setOpen(false)} />
+        <View
+          ref={listRef}
+          style={[
+            styles.list,
+            {
+              left: Math.max(8, Math.min(anchor.x - LIST_WIDTH / 2, window.width - LIST_WIDTH - 8)),
+              bottom: window.height - anchor.y + 6,
+            },
+          ]}
+        >
           <ScrollView>
             {rows.map((row, i) =>
               row.kind === "gap" ? (
@@ -186,7 +205,7 @@ function StashWeb({ theme }: PluginComposerItemProps) {
           </ScrollView>
           <Text style={styles.hint}>↑↓ 이동 · Enter 불러오기 · Esc 닫기</Text>
         </View>
-      )}
+      </Modal>
     </View>
   );
 }
