@@ -4,6 +4,8 @@
 
 A [Paseo](https://paseo.sh) plugin that adds editor-style keys to the agent message composer.
 
+![Stash list with item age and a gap marker](docs/images/stash-list.png)
+
 ## Install
 
 ```bash

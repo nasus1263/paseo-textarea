@@ -4,6 +4,8 @@
 
 에이전트 메시지 입력창에 편집기 단축키를 더하는 [Paseo](https://paseo.sh) 플러그인.
 
+![경과 시간과 ⋮ 구분이 있는 stash 목록](docs/images/stash-list.png)
+
 ## 설치
 
 ```bash
