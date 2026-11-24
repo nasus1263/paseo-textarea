@@ -42,6 +42,10 @@ Set aside what you are writing, per workspace. Stored on the daemon in `~/.paseo
 - **stash N** in the composer opens the same list. Each row shows its age, and a `⋮` row marks gaps of 3 hours or more.
 - Bringing one back while you have text stashes that text first.
 
+## Other plugins
+
+A plugin can give its own multiline fields these keys (all but the stash) by passing `dataSet={{ paseoTextarea: "" }}` to the `TextInput`, which renders the `data-paseo-textarea` attribute. [paseo-doc-ask](https://github.com/nasus1263/paseo-doc-ask) uses this for its input boxes. Without paseo-textarea installed the attribute does nothing.
+
 ## Notes
 
 - Desktop and web only.

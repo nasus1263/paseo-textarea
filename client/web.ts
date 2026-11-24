@@ -50,11 +50,17 @@ declare class Event {
 }
 
 const COMPOSER = "data-composer-input";
+/**
+ * Other plugins' text fields opt in to the editing keys with this attribute. In React Native Web,
+ * pass `dataSet={{ paseoTextarea: "" }}` to the TextInput. The stash stays composer-only.
+ */
+const OPT_IN = "data-paseo-textarea";
 const POPOVER = '[data-testid="composer-autocomplete-popover"]';
 
-function composer(target: unknown): DomTextarea | null {
+/** The textarea the editing keys work in: the message composer, or a field that opted in. */
+function editable(target: unknown): DomTextarea | null {
   const el = target as DomTextarea | null;
-  return el && typeof el.hasAttribute === "function" && el.hasAttribute(COMPOSER) ? el : null;
+  return el && typeof el.hasAttribute === "function" && (el.hasAttribute(COMPOSER) || el.hasAttribute(OPT_IN)) ? el : null;
 }
 
 /** Writes `next` into the textarea so the browser keeps undo history and the app sees an input event. */
@@ -78,13 +84,13 @@ export function apply(el: DomTextarea, next: Edit): void {
   el.setSelectionRange(next.start, next.end);
 }
 
-/** Installs the editing keys on the message composer. Web and desktop only. */
+/** Installs the editing keys on the message composer and on opted-in fields. Web and desktop only. */
 export function installTextareaKeys(): () => void {
   if (Platform.OS !== "web") return () => {};
   let lineClip: string | null = null;
 
   const keydown = (event: DomKeyEvent) => {
-    const el = composer(event.target);
+    const el = editable(event.target);
     if (!el || event.isComposing) return;
     if (event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey && event.key.toLowerCase() === "s") {
       const handler = stashHandlers.find((h) => h.composer() === el);
@@ -99,7 +105,7 @@ export function installTextareaKeys(): () => void {
       el.selectionStart,
       el.selectionEnd,
       { key: event.key, ctrl: event.ctrlKey, shift: event.shiftKey, alt: event.altKey, meta: event.metaKey },
-      document.querySelector(POPOVER) !== null,
+      el.hasAttribute(COMPOSER) && document.querySelector(POPOVER) !== null,
     );
     if (!next) return;
     event.preventDefault();
@@ -109,7 +115,7 @@ export function installTextareaKeys(): () => void {
 
   // Copy or cut with nothing selected takes the whole cursor line.
   const copyOrCut = (cut: boolean) => (event: DomClipboardEvent) => {
-    const el = composer(event.target);
+    const el = editable(event.target);
     if (!el || el.selectionStart !== el.selectionEnd || !event.clipboardData) {
       lineClip = null;
       return;
@@ -122,7 +128,7 @@ export function installTextareaKeys(): () => void {
   };
 
   const paste = (event: DomClipboardEvent) => {
-    const el = composer(event.target);
+    const el = editable(event.target);
     if (!el || lineClip === null || el.selectionStart !== el.selectionEnd) return;
     if (event.clipboardData?.getData("text/plain") !== lineClip) return;
     event.preventDefault();

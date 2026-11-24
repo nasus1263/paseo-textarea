@@ -42,6 +42,10 @@ Enter, Ctrl+Enter는 Paseo 기본 동작 그대로.
 - 입력창의 **stash N**을 눌러도 목록이 열린다. 목록은 넣은 지 얼마나 됐는지를 보여 주고, 3시간 넘게 벌어진 항목 사이에는 `⋮`를 넣는다.
 - 쓰던 내용이 있는 채로 되돌리면 쓰던 내용은 stash로 들어간다.
 
+## 다른 플러그인에서 쓰기
+
+다른 플러그인도 자기 여러 줄 입력칸의 `TextInput`에 `dataSet={{ paseoTextarea: "" }}`를 넘기면(`data-paseo-textarea` 속성으로 렌더링) stash를 뺀 단축키가 그 칸에서도 동작한다. [paseo-doc-ask](https://github.com/nasus1263/paseo-doc-ask)의 입력칸이 이 방식을 쓴다. paseo-textarea가 설치되어 있지 않으면 속성은 아무 일도 하지 않는다.
+
 ## 주의
 
 - 데스크톱과 웹 전용.
